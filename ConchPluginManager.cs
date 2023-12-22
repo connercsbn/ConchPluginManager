@@ -65,28 +65,28 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
     {
         var arg = command.GetArg(1);
         var pluginToRemove = Config.PluginsInstalled.Find((plugin) => plugin.Directory == arg);
-        if (pluginToRemove != null)
-        {
-            Logger.LogInformation("Removing plugin {plugin}", arg);
-            var pluginsDir = new DirectoryInfo(ModulePath).Parent!.Parent!;
-            var pluginToRemovePath = Path.Join(pluginsDir.FullName, pluginToRemove.Directory);
-            if (Directory.Exists(pluginToRemovePath))
+        if (pluginToRemove == null)
+        { 
+            Logger.LogInformation("Plugin {plugin} not found", arg);
+            Logger.LogInformation("available plugins: ");
+            foreach (var plugin in Config.PluginsInstalled)
             {
-                Logger.LogInformation("Deleting directory {dir}", pluginToRemovePath);
-                Directory.Delete(pluginToRemovePath, true);
-                Config.PluginsInstalled.Remove(pluginToRemove);
-            }
-            else
-            {
-                Logger.LogInformation("couldn't find directory {pluginsDir} in {pluginToRemove}", pluginToRemove.Directory, pluginsDir.FullName);
+                Logger.LogInformation(plugin.Directory);
             }
             return;
         }
-        Logger.LogInformation("Plugin {plugin} not found", arg);
-        Logger.LogInformation("available plugins: ");
-        foreach (var plugin in Config.PluginsInstalled)
+        Logger.LogInformation("Removing plugin {plugin}", arg);
+        var pluginsDir = new DirectoryInfo(ModulePath).Parent!.Parent!;
+        var pluginToRemovePath = Path.Join(pluginsDir.FullName, pluginToRemove.Directory);
+        if (Directory.Exists(pluginToRemovePath))
         {
-            Logger.LogInformation(plugin.Directory);
+            Logger.LogInformation("Deleting directory {dir}", pluginToRemovePath);
+            Directory.Delete(pluginToRemovePath, true);
+            Config.PluginsInstalled.Remove(pluginToRemove);
+        }
+        else
+        {
+            Logger.LogInformation("couldn't find directory {pluginsDir} in {pluginToRemove}", pluginToRemove.Directory, pluginsDir.FullName);
         }
     }
 
@@ -122,22 +122,24 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
             { 
                 var res = JsonSerializer.Deserialize<GithubApiResponse>(await response.Content.ReadAsStringAsync());
                 if (String.IsNullOrEmpty(res!.TagName)) return;
-                if (res.TagName != plugin.TagName)
+                if (res.TagName == plugin.TagName)
                 {
-                    Logger.LogInformation("Plugin {plugin} is not up to date! \"Downloading new release {tag_name} from {url}\"", plugin.DownloadString, res!.TagName, res!.Assets[0].BrowserDownloadUrl);
-                    var extractPath = await Download(plugin, res);
-                    try
-                    {
-                        plugin.Directory = Path.GetFileName(GetPluginDir(extractPath));
-                        Merge(extractPath);
-                        Logger.LogInformation("updating tag name from {previousTag} to {nextTag}", plugin.TagName, res!.TagName);
-                        plugin.TagName = res!.TagName;
-                        File.WriteAllText(configPath!, JsonSerializer.Serialize(Config, new JsonSerializerOptions { WriteIndented = true }));
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogInformation(ex.Message);
-                    }
+                    Logger.LogInformation("Plugin {plugin} up to date", plugin.DownloadString);
+                    return;
+                }
+                Logger.LogInformation("Plugin {plugin} is not up to date! \"Downloading new release {tag_name} from {url}\"", plugin.DownloadString, res!.TagName, res!.Assets[0].BrowserDownloadUrl);
+                var extractPath = await Download(plugin, res);
+                try
+                {
+                    plugin.Directory = Path.GetFileName(GetPluginDir(extractPath));
+                    Merge(extractPath);
+                    Logger.LogInformation("updating tag name from {previousTag} to {nextTag}", plugin.TagName, res!.TagName);
+                    plugin.TagName = res!.TagName;
+                    File.WriteAllText(configPath!, JsonSerializer.Serialize(Config, new JsonSerializerOptions { WriteIndented = true }));
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogInformation(ex.Message);
                 }
             }
             catch
@@ -153,7 +155,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
     private void Merge(string extractPath)
     // sync to server files
     // any conflicting files will be overwritten, could this go wrong?
-    // what if plugin author changes file/dir name and we end up with two versions of same plugin?
+    // TODO make sure the structure is counterstrikesharp/plugins/<PluginName>/<PluginName.dll> before merging
     {
         Logger.LogInformation("Merging");
         var csgo = new DirectoryInfo(ModulePath).Parent!.Parent!.Parent!.Parent!.Parent!;
@@ -235,6 +237,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         httpClient.DefaultRequestHeaders.Add("User-Agent", "connercsbn/ConchPluginManager");
         httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "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");
         // for now, we problematically assume the download is in assets[0] and that it's a zip file 
+        // TODO figure out a way to either automatically get the correct asset or allow the user to decide which one they want in the form of a chat menu thing
         HttpResponseMessage res = await httpClient.GetAsync(ghRes.Assets[0].BrowserDownloadUrl); 
         string fileName = res.Content.Headers.ContentDisposition?.FileName ?? $"{plugin.DownloadString.Split('/')[1]}.zip";
 
