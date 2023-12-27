@@ -16,7 +16,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 {
     public override string ModuleName => "Conch Plugin Manager";
 
-    public override string ModuleVersion => "0.0.1";
+    public override string ModuleVersion => "0.0.2";
     public override string ModuleAuthor => "Conch"; 
     string? configPath;
 
@@ -317,7 +317,7 @@ public class PluginInfo
     {
         DownloadString = downloadString;
     }
-    public string DownloadString { get; set; } = "connercsbn/ConchPluginManager";
+    public string DownloadString { get; set; }
     public string? Directory { get; set; }
     public string? TagName { get; set; }
     public bool AutoUpdate { get; set; } = true;
@@ -329,7 +329,5 @@ public class PluginInfo
 
 public class ConchPluginManagerConfig : BasePluginConfig
 {
-    // examples for testing
-    public List<PluginInfo> PluginsInstalled { get; set; } = new ()
-    { };
+    public List<PluginInfo> PluginsInstalled { get; set; } = new() { new ("connercsbn/ConchPluginManager") };
 } 
