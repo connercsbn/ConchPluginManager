@@ -16,7 +16,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 {
     public override string ModuleName => "Conch Plugin Manager";
 
-    public override string ModuleVersion => "0.0.2";
+    public override string ModuleVersion => "0.0.3";
     public override string ModuleAuthor => "Conch"; 
     string? configPath;
 
