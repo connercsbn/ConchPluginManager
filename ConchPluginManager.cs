@@ -62,7 +62,10 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 
         if (!await CheckForUpdate(newPlugin, httpClient))
         {
-            command.ReplyToCommand("");
+            Server.NextFrame(() =>
+            {
+                command.ReplyToCommand("Failed to install plugin.");
+            });
             return;
         }
         Config.PluginsInstalled.Add(newPlugin);
@@ -235,6 +238,11 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         // there are no common directories, so we find the plugin and put it in plugins dir 
         foreach (var dir in new DirectoryInfo(extractPath).GetDirectories())
         {
+            var pluginDir = GetPluginDir(dir.FullName);
+            if (pluginDir != null)
+            {
+                return pluginDir;
+            }
             Logger.LogInformation("looking through {dir} for a matching .dll", dir.FullName);
             var matchingDlls = Directory.GetFiles(dir.FullName, $"{dir.Name}.dll", SearchOption.TopDirectoryOnly);
             Logger.LogInformation("Done...");
@@ -260,7 +268,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         foreach (FileInfo file in files)
         {
             string tempPath = Path.Combine(destinationDirectory, file.Name);
-            file.CopyTo(tempPath, false);
+            file.CopyTo(tempPath, true);
             file.Delete();
         } 
         foreach (DirectoryInfo subdir in dirs)
