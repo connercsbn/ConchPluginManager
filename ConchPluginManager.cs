@@ -16,7 +16,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 {
     public override string ModuleName => "Conch Plugin Manager";
 
-    public override string ModuleVersion => "0.0.3";
+    public override string ModuleVersion => "0.0.4";
     public override string ModuleAuthor => "Conch"; 
     string? configPath;
 
@@ -28,7 +28,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         Config = config;
     }
 
-    [ConsoleCommand("css_list", "List installed plugins")]
+    [ConsoleCommand("css_cpm_list", "List installed plugins")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
     public void OnCommandList(CCSPlayerController? _, CommandInfo command)
@@ -39,15 +39,15 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         }
     }
 
-    [ConsoleCommand("css_update", "Update all")]
+    [ConsoleCommand("css_cpm_update_all", "Update all")]
     [CommandHelper(whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
-    public async void OnCommandUpdate(CCSPlayerController? _, CommandInfo command)
+    public async void OnCommandUpdateAll(CCSPlayerController? _, CommandInfo command)
     {
         await CheckForUpdates();
     }
 
-    [ConsoleCommand("css_install", "Install a plugin")]
+    [ConsoleCommand("css_cpm_install", "Install a plugin")]
     [CommandHelper(minArgs: 1, usage: "<github_author>/<repository_name>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
     public async void OnCommandInstall(CCSPlayerController? _, CommandInfo command)
@@ -62,10 +62,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 
         if (!await CheckForUpdate(newPlugin, httpClient))
         {
-            Server.NextFrame(() =>
-            {
-                command.ReplyToCommand("Failed to install plugin.");
-            });
+            Logger.LogInformation("Failed to install plugin.");
             return;
         }
         Config.PluginsInstalled.Add(newPlugin);
@@ -74,8 +71,8 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         Server.NextFrame(() => Server.ExecuteCommand($"css_plugins load {newPlugin.Directory}"));
     }
 
-    [ConsoleCommand("css_remove", "Remove a plugin")]
-    [CommandHelper(minArgs: 1, usage: "<Plugin download_string/directory>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
+    [ConsoleCommand("css_cpm_remove", "Remove a plugin")]
+    [CommandHelper(minArgs: 1, usage: "<plugin download_string/directory>", whoCanExecute: CommandUsage.CLIENT_AND_SERVER)]
     [RequiresPermissions("@css/root")]
     public void OnCommandRemove(CCSPlayerController? _, CommandInfo command)
     {
@@ -100,21 +97,19 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         }
         else
         {
-            Logger.LogInformation("couldn't find directory {pluginsDir} in {pluginToRemove}", pluginToRemove.Directory, pluginsDir.FullName);
+            Logger.LogInformation("couldn't find directory {plugin} in {plugins}", pluginToRemove.Directory, pluginsDir.FullName);
         }
     }
 
     public override void Load(bool hotReload)
     {
-        if (hotReload) Logger.LogInformation("Conch Plugin Manager reloaded");
         httpClient.DefaultRequestHeaders.Add("User-Agent", "connercsbn/ConchPluginManager");
             
         string pluginDirName = "ConchPluginManager";
         var counterStrikeSharpDir = (new DirectoryInfo(ModulePath).Parent!.Parent!.Parent!).FullName;
         configPath = Path.Combine(counterStrikeSharpDir, "configs", "plugins", pluginDirName, pluginDirName + ".json")!;
-        Logger.LogInformation($"configPath: {configPath}");
-        if (!File.Exists(configPath)) throw new Exception("config not found"); 
-
+        Logger.LogInformation("configPath: {configPath}", configPath);
+        if (!File.Exists(configPath)) throw new Exception("config not found");
         CheckForUpdates();
     }
     public async Task CheckForUpdates()
@@ -193,13 +188,13 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         return false;
     }
     private void Merge(string extractPath, string pluginDir)
-    // sync to server files
-    // any conflicting files will be overwritten, could this go wrong?
     {
         Logger.LogInformation("Merging");
         var csgo = new DirectoryInfo(ModulePath).Parent!.Parent!.Parent!.Parent!.Parent!;
         var plugins = new DirectoryInfo(ModulePath).Parent!.Parent!; 
 
+        // check for matching directory structure in download
+        // if there's a match, merge on the outer-most matching directory
         string[] targetSubDirs = { "csgo", "addons", "counterstrikesharp", "plugins" };
         for (int i = 0; i < targetSubDirs.Length; i++) 
         { 
@@ -221,7 +216,8 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
                         var destination = Path.Join(targetSubDirs.Skip(1).Take(i - 1).ToArray());
                         Logger.LogInformation("{file} ----> {destination_dir}", fileSystemEntry, Path.Join(csgo.FullName, destination));
                         Move(fileSystemEntry, Path.Combine(csgo.FullName, destination, Path.GetFileName(fileSystemEntry)));
-                    }
+                    } 
+                    Directory.Delete(extractPath, true);
                     return;
                 } else
                 {
@@ -229,13 +225,15 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
                 }
             }
         }
+        // else, 
         Logger.LogInformation("{dir} ----> {plugins_dir}", pluginDir, plugins);
         Move(pluginDir, Path.Join(plugins.FullName, Path.GetFileName(pluginDir)));
+        Directory.Delete(extractPath, true);
     }
 
     public string? GetPluginDir(string extractPath)
     {
-        // there are no common directories, so we find the plugin and put it in plugins dir 
+        // search extract path for directory and .dll that have the same name.
         foreach (var dir in new DirectoryInfo(extractPath).GetDirectories())
         {
             var pluginDir = GetPluginDir(dir.FullName);
@@ -243,13 +241,12 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
             {
                 return pluginDir;
             }
-            Logger.LogInformation("looking through {dir} for a matching .dll", dir.FullName);
-            var matchingDlls = Directory.GetFiles(dir.FullName, $"{dir.Name}.dll", SearchOption.TopDirectoryOnly);
-            Logger.LogInformation("Done...");
-            if (matchingDlls.Length == 1)
-            { 
-                return Path.GetDirectoryName(matchingDlls[0]);
-            }
+        }
+        Logger.LogInformation("looking through {dir} for a matching .dll", extractPath);
+        var matchingDlls = Directory.GetFiles(extractPath, $"{new DirectoryInfo(extractPath).Name}.dll", SearchOption.TopDirectoryOnly);
+        if (matchingDlls.Length == 1)
+        { 
+            return Path.GetDirectoryName(matchingDlls.First());
         }
         return null;
     }
@@ -269,14 +266,12 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         {
             string tempPath = Path.Combine(destinationDirectory, file.Name);
             file.CopyTo(tempPath, true);
-            file.Delete();
         } 
         foreach (DirectoryInfo subdir in dirs)
         {
             string tempPath = Path.Combine(destinationDirectory, subdir.Name);
             Move(subdir.FullName, tempPath);
         }
-        Directory.Delete(sourceDirectory, true);
     } 
 
 
