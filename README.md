@@ -10,9 +10,8 @@ Notably, plugins that are only available in the repo itself as well as plugins t
 
 ## Other Considerations
 
- - **This is a work in progress**. In the future I might make major changes such as the location of the config file or how the commands work. Also, since I'm still developing this, logging is pretty verbose.
- - CPM queries Github once per package per update, and **you will be rate limited if you reach Github's 60 query/hour limit**. I plan on adding a way to use your own auth token for people who don't want to worry about this,
-but until then as long as you have less than 60 packages and you're pretty careful you should be fine.
+ - **This is a work in progress**. In the future I might make breaking changes. Also, since I'm still developing this, logging is pretty verbose.
+ - CPM queries Github once per package per update, and **you will be rate limited if you reach Github's 60 query/hour limit**. If you don't want to deal with this rate limit, there is a auth token option in the plugins config file.
  - **You cannot use CPM to manage plugins that were installed manually**. If you want CPM to manage these plugins, you'll have to reinstall them using CPM.
  - In the future, CSS may get its own internal plugin manager
 
@@ -39,6 +38,8 @@ For example, to remove the Soccerball plugin, you can do either of the following
 
 `!cpm_remove newix1/cssharp-soccerball` or `!cpm_remove Soccerball`
 
+This command only removes the plugin's directory in counterstrikesharp/plugins. It doesn't delete any configs or other files outside of this directory that were merged during installation.
+
 ### List
 
 `css_cpm_list` 
@@ -50,7 +51,6 @@ This gives you a list of plugins managed by CPM including the tag name, download
 
  - [ ] support rar
  - [ ] support release contained in repo
- - [ ] support use of github auth tokens
  - [ ] command to update individual plugin
  - [ ] allow configure auto-update
 

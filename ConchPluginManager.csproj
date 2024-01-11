@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="counterstrikesharp.API" Version="1.0.130" />
+    <PackageReference Include="counterstrikesharp.API" Version="1.0.143" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
