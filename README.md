@@ -46,6 +46,16 @@ This command only removes the plugin's directory in counterstrikesharp/plugins. 
 
 This gives you a list of plugins managed by CPM including the tag name, download string, and folder name.
 
+## Example Config
+<pre>
+{
+    "ConfigVersion": 2,
+    "GithubAuthToken": null,
+    "UpdateOnMapChange": false,
+    "UpdateOnServerStart": false,
+    "UpdateOnReload": false
+}
+</pre>
 
 ## TODO: 
 
