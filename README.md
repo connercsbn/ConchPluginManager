@@ -14,7 +14,6 @@ Notably, plugins that are only available in the repo itself as well as plugins t
  - CPM queries Github once per package per update, and **you will be rate limited if you reach Github's 60 query/hour limit**. If you don't want to deal with this rate limit, there is a auth token option in the plugins config file.
  - **You cannot use CPM to manage plugins that were installed manually**. If you want CPM to manage these plugins, you'll have to reinstall them using CPM.
  - When files are installed to your server, any conflicting files will be overwritten. I plan on making installs safer in the future, but for now this is a (very unlikely) possibility
- - In the future, CSS may get its own internal plugin manager
 
 ## How to Use
 
