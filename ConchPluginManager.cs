@@ -18,7 +18,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
 {
     public override string ModuleName => "Conch Plugin Manager";
 
-    public override string ModuleVersion => "0.1.0";
+    public override string ModuleVersion => "0.1.1";
     public override string ModuleAuthor => "Conch"; 
 
     private static readonly HttpClient httpClient = new ();
@@ -107,7 +107,8 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
         }
         Manifest.PluginsInstalled.Remove(pluginToRemove);
         WriteManifest();
-    }
+    } 
+
 
     public override async void Load(bool hotReload)
     {
@@ -124,11 +125,16 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
             if (!await TestAuth()) return;
         } 
         manifestPath = Path.Join(ModuleDirectory, "plugins.json");
-        LoadManifest(); 
+        if (!LoadManifest()) return;
+
         var updateOnReload = Config?.UpdateOnReload ?? false;
         var updateOnServerStart = Config?.UpdateOnServerStart ?? false;
+        var updateOnMapChange = Config?.UpdateOnMapChange ?? false;
+
         if ((updateOnServerStart && !hotReload) || (updateOnReload && hotReload))
-            CheckForUpdates();
+            await CheckForUpdates();
+
+        if (updateOnMapChange && !hotReload) RegisterListener<Listeners.OnMapEnd>(async () => await CheckForUpdates());
     }
 
     public async Task<bool> TestAuth()
@@ -150,12 +156,13 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
     }
 
 
-    public void LoadManifest()
+    public bool LoadManifest()
     {
         if (File.Exists(manifestPath)) {
             try
             {
                 Manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(manifestPath), new JsonSerializerOptions() { ReadCommentHandling = JsonCommentHandling.Skip })!;
+                return true;
             }
             catch (Exception ex)
             {
@@ -166,11 +173,13 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
             try
             {
                 WriteManifest();
+                return true;
             } catch (Exception ex)
             {
                 Logger.LogError("{exception}\nFailed to generate manifest (plugins.json)", ex);
             }
         };
+        return false;
     }
 
     public async Task CheckForUpdates()
@@ -222,7 +231,7 @@ public class ConchPluginManager : BasePlugin, IPluginConfig<ConchPluginManagerCo
                     var pluginDirName = new DirectoryInfo(pluginDir).Name;
                     if (!String.IsNullOrEmpty(plugin.Directory) && plugin.Directory != pluginDirName)
                     {
-                        Logger.LogError("New version of {plugin} uses a different directory than before. OLD: {old_dir} | NEW: {new_dir}", plugin.TagName, plugin.Directory, pluginDirName);
+                        Logger.LogError("New version of {plugin} uses a different directory from before. OLD: {old_dir} | NEW: {new_dir}", plugin.TagName, plugin.Directory, pluginDirName);
                         return false;
                     }
                     Merge(extractPath, pluginDir);
