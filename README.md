@@ -61,7 +61,11 @@ This gives you a list of plugins managed by CPM including the tag name, download
 
  - [ ] support rar
  - [ ] support release contained in repo
+ - [ ] support releases that don't include folder
+ - [ ] support prereleases
  - [ ] command to update individual plugin
  - [ ] allow configure auto-update
+ - [ ] deal with conflicting files, especially on install
+ - [ ] track included files outside of plugin directory?
 
  
